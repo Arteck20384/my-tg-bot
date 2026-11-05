@@ -20,16 +20,14 @@ async def start_cmd(message: types.Message):
 async def handle_message(message: types.Message):
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
     
-    url = "https://openrouter.ai"
+    url = "https://huggingface.co"
     headers = {
         "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://render.com",
-        "X-Title": "Telegram Bot Assistant"
+        "Content-Type": "application/json"
     }
     data = {
-        "model": "nvidia/nemotron-3.5-lightning:free",
-        "messages": [{"role": "user", "content": message.text}]
+        "inputs": f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>\n\n{message.text}<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+        "parameters": {"max_new_tokens": 500, "return_full_text": False}
     }
     
     try:
@@ -42,20 +40,14 @@ async def handle_message(message: types.Message):
         status_code = response.status_code
         result = response.json()
         
-        # Проверяем, вернулся ли стандартный ответ чата
-        if status_code == 200 and isinstance(result, dict) and 'choices' in result:
-            reply_text = result['choices'][0]['message']['content']
-            await message.answer(reply_text)
-        # Если вернулся список (особенность openrouter/free в некоторых случаях)
-        elif status_code == 200 and isinstance(result, list) and len(result) > 0:
-            reply_text = result[0].get('message', {}).get('content', 'Не удалось извлечь текст.')
-            await message.answer(reply_text)
+        if status_code == 200 and isinstance(result, list) and len(result) > 0:
+            reply_text = result[0].get('generated_text', '').strip()
+            await message.answer(reply_text if reply_text else "ИИ вернул пустой текст.")
         else:
-            error_msg = result.get('error', {}).get('message', 'Неизвестная ошибка сервера')
-            await message.answer(f"Технический сбой (Код {status_code}): {error_msg}")
+            await message.answer(f"Технический сбой сети. Попробуйте еще раз.")
             
     except Exception as e:
-        await message.answer(f"Ошибка обработки ответа: {str(e)}")
+        await message.answer(f"Ошибка обработки: {str(e)}")
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
