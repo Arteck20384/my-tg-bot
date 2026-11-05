@@ -2,7 +2,7 @@ import os
 import asyncio
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-from google import genai
+import google.generativeai as genai
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 
@@ -12,7 +12,10 @@ gemini_key = os.environ.get("GEMINI_API_KEY")
 
 bot = Bot(token=tg_token)
 dp = Dispatcher()
-ai_client = genai.Client(api_key=gemini_key)
+
+# Настраиваем ИИ-клиент Gemini
+genai.configure(api_key=gemini_key)
+model = genai.GenerativeModel('gemini-1.5-flash')
 
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message):
@@ -22,11 +25,8 @@ async def start_cmd(message: types.Message):
 async def handle_message(message: types.Message):
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
     try:
-        # Отправляем текст в бесплатную Gemini
-        response = ai_client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents=message.text,
-        )
+        # Отправляем текст в Gemini через стабильную библиотеку
+        response = model.generate_content(message.text)
         await message.answer(response.text)
     except Exception as e:
         await message.answer("Произошла ошибка при обращении к ИИ. Попробуйте позже.")
