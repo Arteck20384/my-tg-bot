@@ -28,7 +28,7 @@ async def handle_message(message: types.Message):
         "X-Title": "Telegram Bot Assistant"
     }
     data = {
-        "model": "openrouter/free",
+        "model": "mistralai/mistral-7b-instruct:free",
         "messages": [{"role": "user", "content": message.text}]
     }
     
