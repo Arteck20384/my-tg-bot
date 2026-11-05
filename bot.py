@@ -7,7 +7,7 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 
 tg_token = os.environ.get("TELEGRAM_TOKEN")
-api_key = os.environ.get("GEMINI_API_KEY") 
+api_key = os.environ.get("GEMINI_API_KEY", "").strip()
 
 bot = Bot(token=tg_token)
 dp = Dispatcher()
