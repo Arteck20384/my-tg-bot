@@ -1,6 +1,6 @@
 import os
 import asyncio
-import aiohttp
+import requests
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
 from http.server import BaseHTTPRequestHandler, HTTPServer
@@ -23,7 +23,9 @@ async def handle_message(message: types.Message):
     url = "https://openrouter.ai"
     headers = {
         "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://render.com",  # Обязательно для OpenRouter
+        "X-Title": "Telegram Bot Assistant"     # Обязательно для OpenRouter
     }
     data = {
         "model": "meta-llama/llama-3-8b-instruct:free",
@@ -31,13 +33,23 @@ async def handle_message(message: types.Message):
     }
     
     try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(url, headers=headers, json=data) as response:
-                result = await response.json()
-                reply_text = result['choices']['message']['content']
-                await message.answer(reply_text)
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None, 
+            lambda: requests.post(url, headers=headers, json=data, timeout=15)
+        )
+        result = response.json()
+        
+        if 'choices' in result and len(result['choices']) > 0:
+            reply_text = result['choices']['message']['content']
+            await message.answer(reply_text)
+        elif 'error' in result:
+            await message.answer(f"Ошибка от ИИ: {result['error'].get('message', 'Неизвестная ошибка')}")
+        else:
+            await message.answer("ИИ вернул пустой ответ. Попробуйте еще раз.")
+            
     except Exception as e:
-        await message.answer("Ошибка связи с ИИ-сервером. Попробуйте ещё раз через минуту.")
+        await message.answer("Ошибка связи с сервером ИИ. Попробуйте еще раз.")
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
