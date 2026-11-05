@@ -28,7 +28,7 @@ async def handle_message(message: types.Message):
         "X-Title": "Telegram Bot Assistant"
     }
     data = {
-        "model": "recursive/flint:free",
+        "model": "nvidia/nemotron-3.5-lightning:free",
         "messages": [{"role": "user", "content": message.text}]
     }
     
