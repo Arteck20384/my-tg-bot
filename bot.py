@@ -28,7 +28,7 @@ async def handle_message(message: types.Message):
         "X-Title": "Telegram Bot Assistant"
     }
     data = {
-        "model": "qwen/qwen-2.5-7b-instruct:free",
+        "model": "openrouter/free",
         "messages": [{"role": "user", "content": message.text}]
     }
     
