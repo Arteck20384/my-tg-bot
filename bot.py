@@ -1,21 +1,16 @@
 import os
 import asyncio
+import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command
-import google.generativeai as genai
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 
-# Загружаем настройки из скрытых переменных сервера
 tg_token = os.environ.get("TELEGRAM_TOKEN")
-gemini_key = os.environ.get("GEMINI_API_KEY")
+api_key = os.environ.get("GEMINI_API_KEY") 
 
 bot = Bot(token=tg_token)
 dp = Dispatcher()
-
-# Настраиваем ИИ-клиент Gemini
-genai.configure(api_key=gemini_key)
-model = genai.GenerativeModel('gemini-1.5-flash')
 
 @dp.message(Command("start"))
 async def start_cmd(message: types.Message):
@@ -24,14 +19,26 @@ async def start_cmd(message: types.Message):
 @dp.message()
 async def handle_message(message: types.Message):
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
+    
+    url = "https://openrouter.ai"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "model": "meta-llama/llama-3-8b-instruct:free",
+        "messages": [{"role": "user", "content": message.text}]
+    }
+    
     try:
-        # Отправляем текст в Gemini через стабильную библиотеку
-        response = model.generate_content(message.text)
-        await message.answer(response.text)
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, headers=headers, json=data) as response:
+                result = await response.json()
+                reply_text = result['choices']['message']['content']
+                await message.answer(reply_text)
     except Exception as e:
-        await message.answer("Произошла ошибка при обращении к ИИ. Попробуйте позже.")
+        await message.answer("Ошибка связи с ИИ-сервером. Попробуйте ещё раз через минуту.")
 
-# Веб-сервер, чтобы бесплатный хостинг не выключал бота
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -49,3 +56,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
