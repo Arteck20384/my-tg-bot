@@ -20,12 +20,12 @@ async def start_cmd(message: types.Message):
 async def handle_message(message: types.Message):
     await bot.send_chat_action(chat_id=message.chat.id, action="typing")
     
-    url = "https://openrouter.ai"
+    url = "https://openrouter.ai/api/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://render.com",  # Обязательно для OpenRouter
-        "X-Title": "Telegram Bot Assistant"     # Обязательно для OpenRouter
+        "HTTP-Referer": "https://render.com",
+        "X-Title": "Telegram Bot Assistant"
     }
     data = {
         "model": "qwen/qwen-2-7b-instruct:free",
@@ -38,18 +38,21 @@ async def handle_message(message: types.Message):
             None, 
             lambda: requests.post(url, headers=headers, json=data, timeout=15)
         )
+        
+        # Получаем статус-код ответа
+        status_code = response.status_code
         result = response.json()
         
-        if 'choices' in result and len(result['choices']) > 0:
+        if status_code == 200 and 'choices' in result and len(result['choices']) > 0:
             reply_text = result['choices']['message']['content']
             await message.answer(reply_text)
-        elif 'error' in result:
-            await message.answer(f"Ошибка от ИИ: {result['error'].get('message', 'Неизвестная ошибка')}")
         else:
-            await message.answer("ИИ вернул пустой ответ. Попробуйте еще раз.")
+            # Если вернулась ошибка, бот пришлет её точную структуру в чат
+            error_msg = result.get('error', {}).get('message', 'Неизвестная ошибка сервера')
+            await message.answer(f"Технический сбой (Код {status_code}): {error_msg}")
             
     except Exception as e:
-        await message.answer("Ошибка связи с сервером ИИ. Попробуйте еще раз.")
+        await message.answer(f"Внутреннее исключение бота: {str(e)}")
 
 class HealthCheckHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -68,4 +71,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-
